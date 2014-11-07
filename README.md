@@ -109,8 +109,8 @@ The length of the character and pointer bytes are specified in the initial word,
 
 Flags are:
 
-    - `0x01` = End of Word (EOW, or final)
-    - `0x02` = End of Node (EON)
+- `0x01` = End of Word (EOW, or final)
+- `0x02` = End of Node (EON)
 
 A node essentially consists of a consecutive, variable-length sequence of words, where each word represents an edge. To encode a node, write each edge sequentially. Set the final (EOW) flag if the node it points to is a final node, and set the EON flag if it is the last edge for that node. The EON flag indicates the next word is an edge belonging to a different node. The pointer in each word should be the *word* index of the start of the node being pointed to.
 
