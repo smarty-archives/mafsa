@@ -64,7 +64,7 @@ func (t *MinTree) Traverse(word []rune) *MinTreeNode {
 // tree before entries beginning with the specified prefix.
 // Such an indexed traversal is slightly slower than a
 // regular traversal since this kind of traversal has to
-//  iterate more nodes and count the numbers on each node.
+// iterate more nodes and count the numbers on each node.
 // Note that returning a non-nil node is not indicative of
 // membership; a node may be be returned even if the word is
 // not in the set. If last node is nil, the returned index
