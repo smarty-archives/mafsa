@@ -60,16 +60,16 @@ func (t *MinTree) Traverse(word []rune) *MinTreeNode {
 // IndexedTraverse visits nodes according to word and
 // returns the last node, if there was one, along with
 // its index number. The index number represents how
-// many entries are in the tree before entries beginning
-// with the specified prefix. Such an indexed traversal is
-// slightly slower than a regular traversal since this
-// kind of traversal has to iterate more nodes and
-// count the numbers on each node. Note that returning
-// a non-nil node is not indicative of membership; a
-// node may be be returned even if the word is not in
-// the set. If last node is nil, the returned index is -1.
-// The algorithm is adapted directly from the paper by
-// Lucceshi and Kowaltowski, 1992 (section 5.2), with
+// many entries, including the returned node, are in the
+// tree before entries beginning with the specified prefix.
+// Such an indexed traversal is slightly slower than a
+// regular traversal since this kind of traversal has to
+//  iterate more nodes and count the numbers on each node.
+// Note that returning a non-nil node is not indicative of
+// membership; a node may be be returned even if the word is
+// not in the set. If last node is nil, the returned index
+// is -1. The algorithm is adapted directly from the paper
+// by Lucceshi and Kowaltowski, 1992 (section 5.2), with
 // one slight modification for correctness because of a slight
 // difference in the way our tree is implemented.
 func (t *MinTree) IndexedTraverse(word []rune) (*MinTreeNode, int) {
