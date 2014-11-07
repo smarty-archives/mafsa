@@ -52,7 +52,7 @@ fmt.Println("Does tree contain 'cities'?", mt.Contains("cities"))
 fmt.Println("Does tree contain 'pitiful'?", mt.Contains("pitiful"))
 
 // You can traverse down to a certain node, if it exists
-fmt.Printf("'y' node is at: %p", mt.Traverse([]rune("city")))
+fmt.Printf("'y' node is at: %p\n", mt.Traverse([]rune("city")))
 
 // To traverse the tree and get the number of elements inserted
 // before the prefix specified
