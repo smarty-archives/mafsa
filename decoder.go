@@ -3,15 +3,15 @@ package mafsa
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"unicode/utf8"
 )
 
 // Decoder is a type which can decode a byte slice into a MinTree.
 type Decoder struct {
 	fileVer int
-	wordLen int
-	charLen int
 	ptrLen  int
 	nodeMap map[int]*MinTreeNode
 	tree    *MinTree
@@ -39,15 +39,16 @@ func (d *Decoder) ReadFrom(r io.Reader) (*MinTree, error) {
 // decodeMinTree transforms the binary serialization of a MA-FSA into a
 // read-only MA-FSA pointed to by t.
 func (d *Decoder) decodeMinTree(t *MinTree, data []byte) error {
-	if len(data) < 4 {
+	if len(data) < 2 {
 		return errors.New("Not enough bytes")
 	}
 
 	// First word contains some file format information
 	d.fileVer = int(data[0])
-	d.wordLen = int(data[1])
-	d.charLen = int(data[2])
-	d.ptrLen = int(data[3])
+	d.ptrLen = int(data[1])
+	if d.ptrLen != 2 && d.ptrLen != 4 && d.ptrLen != 8 {
+		return fmt.Errorf("Only 2, 4 and 8 are valid pointer sizes but we got: %d", d.ptrLen)
+	}
 
 	// The node map translates from byte slice offsets to
 	// actual node pointers in the resulting tree
@@ -63,8 +64,8 @@ func (d *Decoder) decodeMinTree(t *MinTree, data []byte) error {
 	d.tree = t
 
 	// Begin decoding at the root node, which starts
-	// at wordLen in the byte slice
-	err := d.decodeEdge(data, t.Root, d.wordLen, []rune{})
+	// at ptrLen+flags+1(min char len) in the byte slice
+	err := d.decodeEdge(data, t.Root, d.ptrLen+1+1, []rune{})
 	if err != nil {
 		return err
 	}
@@ -83,18 +84,22 @@ func (d *Decoder) decodeMinTree(t *MinTree, data []byte) error {
 // immediate child nodes to parent, it recursively follows the
 // pointer at the end of the word to subsequent child nodes.
 func (d *Decoder) decodeEdge(data []byte, parent *MinTreeNode, offset int, entry []rune) error {
-	for i := offset; i < len(data); i += d.wordLen {
+	for i := offset; i < len(data); {
 		// Break the word apart into the pieces we need
-		charBytes := data[i : i+d.charLen]
-		flags := data[i+d.charLen]
-		ptrBytes := data[i+d.charLen+1 : i+d.wordLen]
+		// First we get the flags which also contains the
+		// charLen in bytes (in the three bits before the least
+		// significant two)
+		flags := data[i]
+		charLen := int(flags >> 2)
+		charBytes := data[i+1 : i+charLen+1]
+		ptrBytes := data[i+charLen+1 : i+charLen+d.ptrLen+1]
 
 		final := flags&endOfWord == endOfWord
 		lastChild := flags&endOfNode == endOfNode
 
-		char, err := d.decodeCharacter(charBytes)
-		if err != nil {
-			return err
+		r, _ := utf8.DecodeRune(charBytes)
+		if r == utf8.RuneError {
+			return fmt.Errorf("Found invalid UTF8 sequence: %x\n", charBytes)
 		}
 
 		ptr, err := d.decodePointer(ptrBytes)
@@ -112,12 +117,13 @@ func (d *Decoder) decodeEdge(data []byte, parent *MinTreeNode, offset int, entry
 		}
 
 		// Add edge to node
-		parent.Edges[char] = d.nodeMap[ptr]
-		entry := append(entry, char) // TODO: Ugh, redeclaring entry seems weird here, but it's necessary, no?
+		parent.Edges[r] = d.nodeMap[ptr]
+		entry := append(entry, r) // TODO: Ugh, redeclaring entry seems weird here, but it's necessary, no?
 
+		i += charLen + d.ptrLen + 1
 		// If there are edges to other nodes, decode them
 		if ptr > 0 {
-			d.decodeEdge(data, d.nodeMap[ptr], ptr*d.wordLen, entry)
+			d.decodeEdge(data, d.nodeMap[ptr], ptr, entry)
 		}
 
 		// If this word represents the last outgoing edge
@@ -148,21 +154,6 @@ func (d *Decoder) doNumbers(node *MinTreeNode) {
 			node.Number++
 		}
 		node.Number += child.Number
-	}
-}
-
-// decodeCharacter converts a byte slice containing a character
-// value to a rune which can be used as a map key or elsewhere.
-func (d *Decoder) decodeCharacter(charBytes []byte) (rune, error) {
-	switch d.charLen {
-	case 1:
-		return rune(charBytes[0]), nil
-	case 2:
-		return rune(binary.BigEndian.Uint16(charBytes)), nil
-	case 4:
-		return rune(binary.BigEndian.Uint32(charBytes)), nil
-	default:
-		return 0, errors.New("Character must be encoded as 1, 2, or 4 bytes")
 	}
 }
 
