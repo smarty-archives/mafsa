@@ -227,15 +227,31 @@ func TestBuildTreeEdgeCases(t *testing.T) {
 		t.Errorf("Node count should be exactly 0 since root node doesn't count, but was %d", tree.nodeCount)
 	}
 
+	err = tree.Insert("Feeling")
+	if err != nil {
+		t.Errorf("Inserting a regular string should work, but returned an error: %v", err)
+	}
+
 	// Inserting Unicode
 	err = tree.Insert("Hello, 世界")
+	if err != nil {
+		t.Errorf("Inserting Unicode string should work, but returned an error: %v", err)
+	}
+	err = tree.Insert("世界はすごい")
+	if err != nil {
+		t.Errorf("Inserting Unicode string should work, but returned an error: %v", err)
+	}
+	err = tree.Insert("世界は美しい")
 	if err != nil {
 		t.Errorf("Inserting Unicode string should work, but returned an error: %v", err)
 	}
 	if !tree.Contains("Hello, 世界") {
 		t.Errorf("With Unicode string in tree, Contains should return true for it")
 	}
-	if tree.nodeCount != 9 {
+	if !tree.Contains("世界は美しい") {
+		t.Errorf("With Unicode string in tree, Contains should return true for it")
+	}
+	if tree.nodeCount != 25 {
 		t.Errorf("Node count should be exactly 9, but was %d", tree.nodeCount)
 	}
 }
@@ -306,6 +322,14 @@ func TestBuildTreeMarshalBinary(t *testing.T) {
 	tree.Insert("dogs")
 	tree.Insert("hello")
 	tree.Insert("jello")
+	err := tree.Insert("été")
+	if err != nil {
+		t.Errorf("Could not insert 'été': %q", err)
+	}
+	err = tree.Insert("あello")
+	if err != nil {
+		t.Errorf("Could not insert 'あello': %q", err)
+	}
 	tree.Finish()
 
 	actual, err := tree.MarshalBinary()
