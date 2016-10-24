@@ -13,42 +13,33 @@ func TestDecoder(t *testing.T) {
 func TestDecoderAgain(t *testing.T) {
 	// This tree contains "ab" and "ac"
 	input := []byte{
-		0x01, 0x06, 0x01, 0x04, 0x00, 0x00,
-		0x61, 0x02, 0x00, 0x00, 0x00, 0x02,
-		0x62, 0x01, 0x00, 0x00, 0x00, 0x00,
-		0x63, 0x03, 0x00, 0x00, 0x00, 0x00,
+		0x01, 0x04, 0x00, 0x00, 0x00, 0x00,
+		0x06, 0x61, 0x00, 0x00, 0x00, 0x0c,
+		0x05, 0x62, 0x00, 0x00, 0x00, 0x00,
+		0x07, 0x63, 0x00, 0x00, 0x00, 0x00,
 	}
 
 	mtree, err := new(Decoder).Decode(input)
 	if err != nil {
 		t.Errorf("Decode produced an error: %v", err)
 	}
-
 	a := mtree.Root.Edges['a']
 	if a.Edges['b'] != a.Edges['c'] {
-		t.Errorf("In tree with 'ab' and 'ac', 'b' and 'c' edges should go to the same node: %p, %p",
+		t.Errorf("In a tree with 'ab' and 'ac', 'b' and 'c' edges should go to the same node: %p, %p",
 			a.Edges['b'], a.Edges['c'])
 	}
 }
 
 func TestDecoderWhenInputTooShort(t *testing.T) {
-	_, err := new(Decoder).Decode([]byte{0x01, 0x06, 0x01})
+	_, err := new(Decoder).Decode([]byte{0x01})
 	if err == nil {
-		t.Errorf("Decoder with fewer than 4 bytes input should return an error and not panic")
-	}
-}
-
-func TestDecoderWithBadCharLength(t *testing.T) {
-	charLength := byte(0x03)
-	_, err := new(Decoder).Decode([]byte{0x01, 0x05, charLength, 0x02, 0x00, 0x61, 0x03, 0x00, 0x00, 0x00})
-	if err == nil {
-		t.Errorf("Decoder given input specifying the character length as 3, a bad length, should return an error")
+		t.Errorf("Decoder with fewer than 2 bytes input should return an error and not panic")
 	}
 }
 
 func TestDecoderWithBadPtrSize(t *testing.T) {
 	ptrSize := byte(0x05)
-	_, err := new(Decoder).Decode([]byte{0x01, 0x06, 0x02, ptrSize, 0x00, 0x00, 0x61, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00})
+	_, err := new(Decoder).Decode([]byte{0x01, ptrSize, 0x00, 0x00, 0x61, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00})
 	if err == nil {
 		t.Errorf("Decoder given input specifying pointer size of 5, a bad size, should return an error")
 	}
@@ -123,6 +114,12 @@ func checkDecodedMinTree(t *testing.T, mtree *MinTree) {
 	}
 	if !mtree.Contains("dog") {
 		t.Errorf("Resulting tree should contain 'dog', but it didn't")
+	}
+	if !mtree.Contains("あello") {
+		t.Errorf("Resulting tree should contain 'あello', but it didn't")
+	}
+	if !mtree.Contains("été") {
+		t.Errorf("Resulting tree should contain 'été', but it didn't")
 	}
 	if !mtree.Contains("dogs") {
 		t.Errorf("Resulting tree should contain 'dogs', but it didn't")
