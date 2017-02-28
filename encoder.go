@@ -1,9 +1,11 @@
 package mafsa
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"io"
+	"math"
 	"sort"
 )
 
@@ -12,10 +14,24 @@ import (
 type Encoder struct {
 	queue   []*BuildTreeNode
 	counter int
+	wordBuf []byte
 }
 
 // Encode serializes a BuildTree t into a byte slice.
 func (e *Encoder) Encode(t *BuildTree) ([]byte, error) {
+	var buffer bytes.Buffer
+	err := e.WriteTo(&buffer, t)
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+// WriteTo encodes and saves the BuildTree to a io.Writer.
+func (e *Encoder) WriteTo(wr io.Writer, t *BuildTree) error {
+	bwr := bufio.NewWriter(wr)
+	defer bwr.Flush()
+
 	e.queue = []*BuildTreeNode{}
 	e.counter = len(t.Root.Edges) + 1
 
@@ -27,13 +43,32 @@ func (e *Encoder) Encode(t *BuildTree) ([]byte, error) {
 	// Fourth byte is pointer length in bytes
 	//   Note: Word length (the first byte)
 	//   must be exactly Second byte + 1 (flags) + Fourth byte
+
+	pointerLen := 4
+	maxRuneLen := characterLen(t.maxRune)
+	wordLen := 1 + maxRuneLen + pointerLen
+
+	// preallocate a buffer we can reuse while building words
+	e.wordBuf = make([]byte, wordLen)
+
+	e.wordBuf[0] = 0x1
+	e.wordBuf[1] = byte(wordLen)
+	e.wordBuf[2] = byte(maxRuneLen)
+	e.wordBuf[3] = byte(pointerLen)
+
 	// Any leftover bytes in this first word are zero
-	data := []byte{0x01, 0x06, 0x01, 0x04}
-	for i := len(data); i < int(data[1]); i++ {
-		data = append(data, 0x00)
+	for i := 4; i < wordLen; i++ {
+		e.wordBuf[i] = 0x00
+	}
+	_, err := bwr.Write(e.wordBuf)
+	if err != nil {
+		return err
 	}
 
-	data = e.encodeEdges(t.Root, data)
+	err = e.encodeEdges(t.Root, bwr, pointerLen, maxRuneLen)
+	if err != nil {
+		return err
+	}
 
 	for len(e.queue) > 0 {
 		// Pop first item off the queue
@@ -41,22 +76,10 @@ func (e *Encoder) Encode(t *BuildTree) ([]byte, error) {
 		e.queue = e.queue[1:]
 
 		// Recursively marshal child nodes
-		data = e.encodeEdges(top, data)
-	}
-
-	return data, nil
-}
-
-// WriteTo encodes and saves the BuildTree to a io.Writer.
-func (e *Encoder) WriteTo(wr io.Writer, t *BuildTree) error {
-	bs, err := e.Encode(t)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(wr, bytes.NewReader(bs))
-	if err != nil {
-		return err
+		err = e.encodeEdges(top, bwr, pointerLen, maxRuneLen)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -64,14 +87,14 @@ func (e *Encoder) WriteTo(wr io.Writer, t *BuildTree) error {
 
 // encodeEdges encodes the edges going out of node into bytes which are appended
 // to data. The modified byte slice is returned.
-func (e *Encoder) encodeEdges(node *BuildTreeNode, data []byte) []byte {
+func (e *Encoder) encodeEdges(node *BuildTreeNode, bw *bufio.Writer, pointerLen, runeLen int) error {
 	// We want deterministic output for testing purposes,
 	// so we need to order the keys of the edges map.
 	edgeKeys := sortEdgeKeys(node)
 
 	for i := 0; i < len(edgeKeys); i++ {
 		child := node.Edges[edgeKeys[i]]
-		word := []byte(string(edgeKeys[i]))
+		encodeCharacter(edgeKeys[i], runeLen, e.wordBuf)
 
 		var flags byte
 		if child.final {
@@ -80,8 +103,7 @@ func (e *Encoder) encodeEdges(node *BuildTreeNode, data []byte) []byte {
 		if i == len(edgeKeys)-1 {
 			flags |= 0x02 // end of node (last child outgoing from this node)
 		}
-
-		word = append(word, flags)
+		e.wordBuf[runeLen] = flags
 
 		// If bytePos is 0, we haven't encoded this edge yet
 		if child.bytePos == 0 {
@@ -93,22 +115,41 @@ func (e *Encoder) encodeEdges(node *BuildTreeNode, data []byte) []byte {
 		}
 
 		pointer := child.bytePos
-		pointerBytes := make([]byte, int(data[3]))
-		switch len(pointerBytes) {
+		switch pointerLen {
 		case 2:
-			binary.BigEndian.PutUint16(pointerBytes, uint16(pointer))
+			binary.BigEndian.PutUint16(e.wordBuf[runeLen+1:], uint16(pointer))
 		case 4:
-			binary.BigEndian.PutUint32(pointerBytes, uint32(pointer))
+			binary.BigEndian.PutUint32(e.wordBuf[runeLen+1:], uint32(pointer))
 		case 8:
-			binary.BigEndian.PutUint64(pointerBytes, uint64(pointer))
+			binary.BigEndian.PutUint64(e.wordBuf[runeLen+1:], uint64(pointer))
 		}
 
-		word = append(word, pointerBytes...)
-
-		data = append(data, word...)
+		_, err := bw.Write(e.wordBuf)
+		if err != nil {
+			return err
+		}
 	}
 
-	return data
+	return nil
+}
+
+func characterLen(r rune) int {
+	if r <= math.MaxUint8 {
+		return 1
+	} else if r <= math.MaxUint16 {
+		return 2
+	}
+	return 4
+}
+
+func encodeCharacter(r rune, runeLen int, buf []byte) {
+	if runeLen == 1 {
+		buf[0] = byte(r)
+	} else if runeLen == 2 {
+		binary.BigEndian.PutUint16(buf, uint16(r))
+	} else {
+		binary.BigEndian.PutUint32(buf, uint32(r))
+	}
 }
 
 // sortEdgeKeys returns a sorted list of the keys
