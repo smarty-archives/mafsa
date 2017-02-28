@@ -19,6 +19,7 @@ type (
 		nodeCount    uint
 		register     map[string]*BuildTreeNode
 		previousWord []rune
+		maxRune      rune
 	}
 
 	// BuildTreeNode is a node in a BuildTree that contains all the
@@ -83,6 +84,9 @@ func (t *BuildTree) Finish() {
 func (t *BuildTree) addSuffix(lastState *BuildTreeNode, suffix []rune) {
 	node := lastState
 	for _, char := range suffix {
+		if char > t.maxRune {
+			t.maxRune = char
+		}
 		newNode := &BuildTreeNode{
 			Edges: make(map[rune]*BuildTreeNode),
 			char:  char,
@@ -161,12 +165,8 @@ func (t *BuildTree) Save(filename string) error {
 	}
 	defer file.Close()
 
-	data, err := t.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	_, err = file.Write(data)
+	e := new(Encoder)
+	err = e.WriteTo(file, t)
 	if err != nil {
 		return err
 	}

@@ -134,3 +134,74 @@ func checkDecodedMinTree(t *testing.T, mtree *MinTree) {
 		t.Errorf("Resulting tree should NOT contain '', but it did")
 	}
 }
+
+func TestDecoderCharLength2(t *testing.T) {
+	mtree, err := new(Decoder).Decode(encodedTestTreeCharLength2)
+	if err != nil {
+		t.Errorf("Decode produced an error: %v", err)
+	}
+	checkDecodedMinTreeCharLength2(t, mtree)
+}
+
+// Checks the decoded min tree found in encoder_test.go
+// for the proper entries.
+func checkDecodedMinTreeCharLength2(t *testing.T, mtree *MinTree) {
+	if !mtree.Contains("llama") {
+		t.Errorf("Resulting tree should contain 'llama', but it didn't")
+	}
+	if !mtree.Contains("klājas") {
+		t.Errorf("Resulting tree should contain 'klājas', but it didn't")
+	}
+	if !mtree.Contains("dog") {
+		t.Errorf("Resulting tree should contain 'dog', but it didn't")
+	}
+	if !mtree.Contains("dogs") {
+		t.Errorf("Resulting tree should contain 'dogs', but it didn't")
+	}
+	if mtree.Contains("do") {
+		t.Errorf("Resulting tree should NOT contain 'do', but it did")
+	}
+	if mtree.Contains("klajas") {
+		t.Errorf("Resulting tree should NOT contain 'klajas', but it did")
+	}
+	if mtree.Contains("") {
+		t.Errorf("Resulting tree should NOT contain '', but it did")
+	}
+}
+
+func TestDecoderCharLength4(t *testing.T) {
+	mtree, err := new(Decoder).Decode(encodedTestTreeCharLength4)
+	if err != nil {
+		t.Errorf("Decode produced an error: %v", err)
+	}
+	checkDecodedMinTreeCharLength4(t, mtree)
+}
+
+// Checks the decoded min tree found in encoder_test.go
+// for the proper entries.
+func checkDecodedMinTreeCharLength4(t *testing.T, mtree *MinTree) {
+	if !mtree.Contains("llama") {
+		t.Errorf("Resulting tree should contain 'llama', but it didn't")
+	}
+	if !mtree.Contains("𐐡") {
+		t.Errorf("Resulting tree should contain '𐐡', but it didn't")
+	}
+	if !mtree.Contains("dog") {
+		t.Errorf("Resulting tree should contain 'dog', but it didn't")
+	}
+	if !mtree.Contains("dogs") {
+		t.Errorf("Resulting tree should contain 'dogs', but it didn't")
+	}
+	if mtree.Contains("do") {
+		t.Errorf("Resulting tree should NOT contain 'do', but it did")
+	}
+	if mtree.Contains("𐐡𐐡") {
+		t.Errorf("Resulting tree should NOT contain '𐐡𐐡', but it did")
+	}
+	if mtree.Contains("𐐡dog") {
+		t.Errorf("Resulting tree should NOT contain '𐐡dog', but it did")
+	}
+	if mtree.Contains("") {
+		t.Errorf("Resulting tree should NOT contain '', but it did")
+	}
+}
