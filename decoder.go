@@ -64,7 +64,7 @@ func (d *Decoder) decodeMinTree(t *MinTree, data []byte) error {
 
 	// Begin decoding at the root node, which starts
 	// at wordLen in the byte slice
-	err := d.decodeEdge(data, t.Root, d.wordLen, []rune{})
+	err := d.decodeEdge(data, t.Root, d.wordLen)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (d *Decoder) decodeMinTree(t *MinTree, data []byte) error {
 // node to parent, which is already in the tree. After adding the
 // immediate child nodes to parent, it recursively follows the
 // pointer at the end of the word to subsequent child nodes.
-func (d *Decoder) decodeEdge(data []byte, parent *MinTreeNode, offset int, entry []rune) error {
+func (d *Decoder) decodeEdge(data []byte, parent *MinTreeNode, offset int) error {
 	for i := offset; i < len(data); i += d.wordLen {
 		// Break the word apart into the pieces we need
 		charBytes := data[i : i+d.charLen]
@@ -113,11 +113,10 @@ func (d *Decoder) decodeEdge(data []byte, parent *MinTreeNode, offset int, entry
 
 		// Add edge to node
 		parent.Edges[char] = d.nodeMap[ptr]
-		entry := append(entry, char) // TODO: Ugh, redeclaring entry seems weird here, but it's necessary, no?
 
 		// If there are edges to other nodes, decode them
 		if ptr > 0 {
-			d.decodeEdge(data, d.nodeMap[ptr], ptr*d.wordLen, entry)
+			d.decodeEdge(data, d.nodeMap[ptr], ptr*d.wordLen)
 		}
 
 		// If this word represents the last outgoing edge
