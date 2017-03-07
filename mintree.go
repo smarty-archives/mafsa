@@ -20,16 +20,6 @@ type (
 		Final  bool
 		Number int
 	}
-
-	// Entry represents a value in the tree along with its
-	// index number (minimal perfect hashing).
-	Entry struct {
-		// The actual entry that was added to the tree
-		Value string
-
-		// Represents how many entries were added to the tree before this one
-		Index int
-	}
 )
 
 // Contains returns true if word is found in the tree,
