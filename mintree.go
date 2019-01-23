@@ -141,6 +141,15 @@ func (n *MinTreeNode) OrderedEdges() []rune {
 	return []rune(keys)
 }
 
+// IterateDepthFirst returns an unbuffered channel which will be loaded with all items
+// in the tree in lexicographical order. The caller need only range over the channel (which
+// will be closed whan all items have been loaded).
+func (t *MinTree) IterateDepthFirst() chan string {
+	search := &depthFirst{tree: t, channel: make(chan string)}
+	go search.start()
+	return search.channel
+}
+
 // newMinTree constructs a new, empty MA-FSA that must be assembled
 // manually (e.g. when decoding from binary), but is very memory
 // efficient.
