@@ -145,7 +145,7 @@ func (n *MinTreeNode) OrderedEdges() []rune {
 // in the tree in lexicographical order. The caller need only range over the channel (which
 // will be closed whan all items have been loaded).
 func (t *MinTree) IterateDepthFirst() chan string {
-	search := &depthFirst{tree: t, channel: make(chan string)}
+	search := newDepthFirst(t)
 	go search.start()
 	return search.channel
 }
